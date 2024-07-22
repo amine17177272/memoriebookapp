@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}
+Search Users
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav class='menu'>
+        <ul>
+            <li><a href="{{ url_for('views.home') }}">Return to home page</a></li>
+            <li><a href="{{ url_for('views.main') }}" class="btn btn-secondary">main</a></li>
+        </ul>
+    </nav>
+    <h1>Search Users</h1>
+    <form id="searchForm" method="GET">
+        <div class="form-group">
+            <input type="text" id="username" name="username" class="form-control" placeholder="Enter username">
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <div id="searchResults" class="mt-4">
+        <!-- Search results will be displayed here -->
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function attachLikeButtonListeners() {
+            document.querySelectorAll('.like-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const postId = this.getAttribute('data-post-id');
+                    console.log(`Liking Post ID: ${postId}`); // Debugging line
+
+                    if (!postId) {
+                        console.error('Post ID is missing or undefined');
+                        return;
+                    }
+
+                    fetch(`/post/${postId}/like`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token() }}'
+                        }
+                    })
+                        .then(response => {
+                            console.log('Response status:', response.status); // Debugging line
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Response data:', data); // Debugging line
+                            if (data.status === 'liked') {
+                                this.textContent = 'Unlike';
+                            } else {
+                                this.textContent = 'Like';
+                            }
+                            this.closest('.card-body').querySelector('.likes-count').textContent = data.like_count;
+                        })
+                        .catch(error => console.error('Error liking post:', error));
+                });
+            });
+        }
+
+        // Initial setup of like buttons
+        attachLikeButtonListeners();
+
+        // Search form submission
+        const searchForm = document.getElementById('searchForm');
+        searchForm.addEventListener('submit', function (event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            const username = document.getElementById('username').value;
+
+            fetch(`{{ url_for('views.search') }}?username=${username}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsContainer = document.getElementById('searchResults');
+                    resultsContainer.innerHTML = '';
+
+                    if (data.users.length > 0) {
+                        data.users.forEach(user => {
+                            const userElement = document.createElement('div');
+                            userElement.innerHTML = `
+                                <div class="card my-2">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${user.user_name}</h5>
+                                        <button class="btn btn-secondary view-posts-btn" data-user-id="${user.id}">View Posts</button>
+                                    </div>
+                                </div>
+                            `;
+                            resultsContainer.appendChild(userElement);
+                        });
+
+                        document.querySelectorAll('.view-posts-btn').forEach(button => {
+                            button.addEventListener('click', function () {
+                                const userId = this.getAttribute('data-user-id');
+                                fetch(`/user/${userId}/posts`)
+                                    .then(response => response.json())
+                                    .then(postsData => {
+                                        const postsContainer = document.createElement('div');
+                                        postsContainer.classList.add('posts-container');
+
+                                        postsData.posts.forEach(post => {
+                                            const postElement = document.createElement('div');
+                                            postElement.innerHTML = `
+                                                <div class="card my-2">
+                                                    <div class="card-body">
+                                                        <p>${post.content}</p>
+                                                        <footer class="blockquote-footer">Posted on ${post.date}</footer>
+                                                        <p>Likes: <span class="likes-count">${post.likes}</span></p>
+                                                        <button class="like-btn" data-post-id="${post.id}">
+                                                            ${post.liked ? 'Unlike' : 'Like'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `;
+                                            postsContainer.appendChild(postElement);
+                                        });
+
+                                        resultsContainer.appendChild(postsContainer);
+
+                                        // Reattach event listeners to new like buttons
+                                        attachLikeButtonListeners();
+                                    })
+                                    .catch(error => console.error('Error fetching posts:', error));
+                            });
+                        });
+                    } else {
+                        resultsContainer.innerHTML = '<p>No users found</p>';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    });
+</script>
+{% endblock %}

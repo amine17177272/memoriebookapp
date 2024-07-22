@@ -1,0 +1,24 @@
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+<main class='wrapper'>
+    <header class='header'>
+        <div class='header__logo'>Memoriat</div>
+        <div class='header__right'>
+            <p>
+                <span class='header__language header__active'>EN</span>
+                <span class='header__language'>AR</span>
+            </p>
+            <div class='header__diamond'></div>
+        </div>
+    </header>
+    <nav class='menu'>
+        <ul>
+            <a href="{{ url_for('views.main') }}">Make a memorie</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </ul>
+    </nav>
+    <div class='bg__pattern'></div>
+    <div class='bg__image'></div>
+</main>
+<script src="{{ url_for('static', filename='home.js') }}"></script>
+{% endblock %}
